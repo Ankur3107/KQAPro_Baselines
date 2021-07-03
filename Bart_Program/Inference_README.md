@@ -6,4 +6,4 @@
     inferencer = Inference(model_name_or_path, kb_json_file)
     inferencer.run("who is the prime minister of india?")
 
-    # result are: ['Find(India)<b>Relate(country<c>backward)<b>FilterConcept(human)<b>What()']
+    # output: ['Find(India)<b>Relate(country<c>backward)<b>FilterConcept(human)<b>What()']
