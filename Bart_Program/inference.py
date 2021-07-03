@@ -33,6 +33,8 @@ from Bart_Program.predict import *
 
 
 def load_trained_models(model_name_or_path, kb_json_file, device='cuda' if torch.cuda.is_available() else 'cpu'):
+    """"Load Trained Model for inference"""
+    
     tokenizer = BartTokenizer.from_pretrained(model_name_or_path)
     vocab = {
         'answer_token_to_idx': {} # load if you want to test accuracy
@@ -59,6 +61,7 @@ def collate(batch):
     return source_ids, source_mask, choices, target_ids, answer
 
 class Dataset(torch.utils.data.Dataset):
+    """"Build torch dataset class"""
     def __init__(self, inputs):
         self.source_ids, self.source_mask, self.target_ids, self.choices, self.answers = inputs
         self.is_test = len(self.answers)==0
@@ -82,6 +85,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
 class DataLoader(torch.utils.data.DataLoader):
+    """Build dataload class"""
     def __init__(self, vocab, inputs, batch_size, training=False):
         if training:
             print('#vocab of answer: %d' % (len(vocab['answer_token_to_idx'])))
@@ -99,6 +103,7 @@ class DataLoader(torch.utils.data.DataLoader):
 
 
 def get_predict_dataloader(query, tokenizer, vocab, max_seq_length=32):
+    """Get processed dataloader for inference"""
 
     questions = [query]
     input_ids = tokenizer.batch_encode_plus(questions, max_length = max_seq_length, pad_to_max_length = True, truncation = True)
@@ -113,6 +118,7 @@ def get_predict_dataloader(query, tokenizer, vocab, max_seq_length=32):
 
 
 def get_prediction(kb, model, data_loader, device, tokenizer):
+    """Get prediction"""
   count, correct = 0, 0
   pattern = re.compile(r'(.*?)\((.*?)\)')
   with torch.no_grad():
