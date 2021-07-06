@@ -118,7 +118,7 @@ def get_predict_dataloader(query, tokenizer, vocab, max_seq_length=32):
 
 
 def get_prediction(kb, model, data_loader, device, tokenizer):
-    """Get prediction"""
+  """Get prediction"""
   count, correct = 0, 0
   pattern = re.compile(r'(.*?)\((.*?)\)')
   with torch.no_grad():
