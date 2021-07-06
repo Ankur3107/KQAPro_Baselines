@@ -137,6 +137,26 @@ def get_prediction(kb, model, data_loader, device, tokenizer):
       outputs = [tokenizer.decode(output_id, skip_special_tokens = True, clean_up_tokenization_spaces = True) for output_id in all_outputs]
   return outputs
 
+def post_process(text):
+    pattern = re.compile(r'".*?"')
+    nes = []
+    for item in pattern.finditer(text):
+        nes.append((item.group(), item.span()))
+    pos = [0]
+    for name, span in nes:
+        pos += [span[0], span[1]]
+    pos.append(len(text))
+    assert len(pos) % 2 == 0
+    assert len(pos) / 2 == len(nes) + 1
+    chunks = [text[pos[i]: pos[i+1]] for i in range(0, len(pos), 2)]
+    for i in range(len(chunks)):
+        chunks[i] = chunks[i].replace('?', ' ?').replace('.', ' .')
+    bingo = ''
+    for i in range(len(chunks) - 1):
+        bingo += chunks[i] + nes[i][0]
+    bingo += chunks[-1]
+    return bingo
+
 
 class Inference:
     def __init__(self, model_name_or_path, kb_json_file,  device ='cuda' if torch.cuda.is_available() else 'cpu'):
@@ -148,4 +168,5 @@ class Inference:
     def run(self, query, max_seq_length=32):
         predict_loader = get_predict_dataloader(query, self.tokenizer, self.vocab, max_seq_length=max_seq_length)
         outputs = get_prediction(self.kb, self.model, predict_loader, self.device, self.tokenizer)
+        pred_sparql = [post_process(output) for output in outputs]
         return outputs
