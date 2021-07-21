@@ -161,7 +161,7 @@ class EntityFinder():
     entity_dict = {}
     entities = entities.entities
     for entity in entities:
-      entity_dict[entity.get_span().text] = entity.get_url()
+      entity_dict[entity.get_span().text.lower()] = entity.get_url()
     return entity_dict
 
 
@@ -170,8 +170,8 @@ class EntityFinder():
     to_finds = program_dict['Find']
     to_find_with_entities = [] 
     for to_find in to_finds:
-      if to_find in entity_dict:
-        to_find_with_entities.append(to_find+"#"+entity_dict[to_find])
+      if to_find.lower() in entity_dict:
+        to_find_with_entities.append(to_find+"#"+entity_dict[to_find.lower()])
       else:
         to_find_with_entities.append(to_find+"#None")
     program_dict['Find'] = to_find_with_entities
