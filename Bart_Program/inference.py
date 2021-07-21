@@ -30,6 +30,7 @@ logFormatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
 rootLogger = logging.getLogger()
 warnings.simplefilter("ignore") # hide warnings that caused by invalid sparql query
 from Bart_Program.predict import *
+import spacy
 
 
 def load_trained_models(model_name_or_path, kb_json_file, device='cuda' if torch.cuda.is_available() else 'cpu'):
@@ -149,3 +150,75 @@ class Inference:
         predict_loader = get_predict_dataloader(query, self.tokenizer, self.vocab, max_seq_length=max_seq_length)
         outputs = get_prediction(self.kb, self.model, predict_loader, self.device, self.tokenizer)
         return outputs
+
+class EntityFinder():
+  def __init__(self, spacy_model_name="en_core_web_md"):
+    self.nlp = spacy.load(spacy_model_name)
+    self.nlp.add_pipe("entityLinker", last=True)
+
+
+  def entity_collection_postprocessing(self, entities):
+    entity_dict = {}
+    entities = entities.entities
+    for entity in entities:
+      entity_dict[entity.get_span().text.lower()] = entity.get_url()
+    return entity_dict
+
+
+  def link_program_and_entity(self, program_dict, entity_dict):
+    program_dict = program_dict.copy()
+    to_finds = program_dict['Find']
+    to_find_with_entities = [] 
+    for to_find in to_finds:
+      if to_find.lower() in entity_dict:
+        to_find_with_entities.append(to_find+"#"+entity_dict[to_find.lower()])
+      else:
+        to_find_with_entities.append(to_find+"#None")
+    program_dict['Find'] = to_find_with_entities
+    return program_dict
+
+  def search(self, text, program_dict):
+    doc = self.nlp(text)
+    all_linked_entities = doc._.linkedEntities
+
+    entity_dict = self.entity_collection_postprocessing(all_linked_entities)
+    program_dict = self.link_program_and_entity(program_dict, entity_dict)
+    return program_dict
+
+
+class InferenceWithEntity:
+    def __init__(self, model_name_or_path, kb_json_file,  device ='cuda' if torch.cuda.is_available() else 'cpu'):
+        self.model_name_or_path = model_name_or_path
+        self.kb_json_file = kb_json_file
+        self.device = device
+        self.tokenizer, self.model, self.vocab, self.rule_executor, self.kb = load_trained_models(model_name_or_path, kb_json_file, device)
+        self.entity_finder = EntityFinder()
+
+
+    def program_formatting(self, program):
+        pattern = re.compile(r'(.*?)\((.*?)\)')
+        chunks = program.split('<b>')
+
+        program_dict = {}
+        for chunk in chunks:
+            # print(chunk)
+            res = pattern.findall(chunk)
+            # print(res)
+            if len(res) == 0:
+                continue
+            res = res[0]
+            func, inputs = res[0], res[1]
+            if inputs == '':
+                inputs = []
+            else:
+                inputs = inputs.split('<c>')
+
+            program_dict[func] = inputs
+        return program_dict
+    
+    def run(self, query, max_seq_length=32):
+        predict_loader = get_predict_dataloader(query, self.tokenizer, self.vocab, max_seq_length=max_seq_length)
+        outputs = get_prediction(self.kb, self.model, predict_loader, self.device, self.tokenizer)
+        program_dict = self.program_formatting(outputs[0])
+        program_with_entity_dict = self.entity_finder.search(query, program_dict)
+        return program_with_entity_dict

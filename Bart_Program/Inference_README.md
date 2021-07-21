@@ -17,7 +17,10 @@
     cd KQAPro_Baselines
 
 ### Install dependencies
-    pip install -q transformers sentencepiece
+    pip install -q transformers sentencepiece spacy==3.1.1 spacy-entity-linker
+
+    python -m spacy_entity_linker "download_knowledge_base"
+    python -m spacy download en_core_web_md
     
 ## Run Inference
     from Bart_Program.inference import Inference
@@ -27,3 +30,16 @@
     inferencer.run("who is the prime minister of india?")
 
     # output: ['Find(India)<b>Relate(country<c>backward)<b>FilterConcept(human)<b>What()']
+
+## Run InferenceWithEntity
+
+    from Bart_Program.inference import InferenceWithEntity
+    model_name_or_path = "../KQAPro_ckpt/program_ckpt"
+    kb_json_file = "../KQA-Pro-v1.0/kb.json"
+    inferencer = Inference(model_name_or_path, kb_json_file)
+    inferencer.run("Who is the next president after Donald Trump?")
+
+    # {'FilterConcept': ['head of government'],
+        'Find': ['Donald Trump#https://www.wikidata.org/wiki/Q22686'],
+        'Relate': ['follows', 'forward'],
+        'What': []}
